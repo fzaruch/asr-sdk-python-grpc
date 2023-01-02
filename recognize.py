@@ -70,7 +70,6 @@ def get_file_stream(args):
 def send_audio(args, stub):
     route_iterator = get_file_stream(args=args)
     response_stream = stub.StreamingRecognize(route_iterator)
-    #response_stream = stub.StreamingRecognize(iter((route_iterator,)))
     print("Sending audio")
     return response_stream
 
