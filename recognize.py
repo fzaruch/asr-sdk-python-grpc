@@ -4,12 +4,16 @@ import grpc
 import logging
 import RecognizeService_pb2_grpc
 import RecognizeService_pb2
-from concurrent.futures import ThreadPoolExecutor
+
 
 def usage(args):
     print("Usage:")
     print("\t{} -f <audio_file_name>".format(args[0]))
-    print("\t{} -c <true/false>".format(args[0]))
+    print("\t{} -c <true/false> - continuous mode".format(args[0]))
+    print("\t{} -a <true/false> - enable age score".format(args[0]))
+    print("\t{} -e <true/false> - enable emotion score".format(args[0]))
+    print("\t{} -e <true/false> - enable gender score".format(args[0]))
+    print("\t{} -s <true/false> - enable synchronous mode".format(args[0]))
     sys.exit(2)
 
 
@@ -19,6 +23,7 @@ def get_boolean_par(args, arg):
         if args.get(arg.lower()) == "true":
             value = True
     return value
+
 
 def fill_config_request(args):
     languageModel = []
@@ -32,6 +37,7 @@ def fill_config_request(args):
                                                            gender_scores_enabled=get_boolean_par(args, "cl_gender")
                                                            )
     return configRequest
+
 
 def show_result(response):
     is_last = False
@@ -67,11 +73,13 @@ def get_file_stream(args):
         data = b'\x00'
     yield RecognizeService_pb2.StreamingRecognizeRequest(media=data, last_packet=True)
 
+
 def send_audio(args, stub):
     route_iterator = get_file_stream(args=args)
     response_stream = stub.StreamingRecognize(route_iterator)
     print("Sending audio")
     return response_stream
+
 
 async def get_result(args, response_stream):
     is_last = False
@@ -79,16 +87,17 @@ async def get_result(args, response_stream):
         response = await response_stream.read()
         if response == grpc.aio.EOF:
             continue
-        # for response in response_stream:
         print("Error: {}".format(response.error_code))
         print("Event: {}".format(response.event))
         is_last = show_result(response)
+
 
 async def run_async(args):
     async with grpc.aio.insecure_channel("172.17.0.3:9090") as channel:
         stub = RecognizeService_pb2_grpc.RecognizeServiceStub(channel)
         response_stream = send_audio(args, stub)
         await get_result(args, response_stream)
+
 
 def run(args):
     with grpc.insecure_channel("172.17.0.3:9090") as channel:
